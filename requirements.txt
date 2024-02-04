@@ -1,0 +1,4 @@
+pyTelegramBotAPI
+selenium~=4.17.2
+pillow~=10.2.0
+requests~=2.31.0
