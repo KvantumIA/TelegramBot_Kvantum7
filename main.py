@@ -5,7 +5,7 @@ from data import TelBot
 from telebot import types
 from selenium.common.exceptions import WebDriverException
 
-bot = telebot.TeleBot('6880345844:AAFBkJ0GQruvvMIyOMcseNVIboVXM_icTns')
+bot = telebot.TeleBot('6939201071:AAFVLDepE2VnTCOA2Zib7YNVeJPt4etLIVI')
 start = TelBot()
 
 try:
