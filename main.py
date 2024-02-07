@@ -19,14 +19,6 @@ try:
         bot.reply_to(message, "Привет! Я бот помощник. Для начала работы выберите пункт меню.")
         print(message.chat.id)
 
-    # Выбор загрузки файла в процессе работы
-    def question_upload_file(message):
-        markup = types.InlineKeyboardMarkup()
-        markup.add(types.InlineKeyboardButton('Загрузить новый файл. Он автоматически конвертируется в архив.', callback_data='send_file'))
-        markup.add(types.InlineKeyboardButton('Загрузить созданный архив.', callback_data='next_step_upload_file'))
-        bot.send_message(message.chat.id, "Пожалуйста выберите пункт меню.", reply_markup=markup)
-        print("Выбор способа загрузки файла.")
-
     # Начало работы загрузки данных на сайт
     @bot.message_handler(commands=['upload_file'])
     def echo_all(message):
@@ -61,15 +53,6 @@ try:
                 time.sleep(1)  # Даем время для получения ответа
             next_step(message)
 
-    # Проверяем капчу
-    def answer_capcha(message):
-        bot.send_message(message.chat.id, "Расшифруйте 4 буквы из картинки и отправьте мне.")
-        bot.register_next_step_handler(message, returning)
-
-
-    def returning(message):
-        start.answer = message.text
-
     # Продолжаем работать, следующий шаг
     def next_step(message):
         attempts = 0
@@ -92,6 +75,23 @@ try:
                         f"/ezhednevnoe-menyu-goryachego-pitaniya)")
         bot.send_message(message.chat.id, message_text, parse_mode='MarkdownV2')
         return
+
+    # Проверяем капчу
+    def answer_capcha(message):
+        bot.send_message(message.chat.id, "Расшифруйте 4 буквы из картинки и отправьте мне.")
+        bot.register_next_step_handler(message, returning)
+
+
+    def returning(message):
+        start.answer = message.text
+
+    # Выбор загрузки файла в процессе работы
+    def question_upload_file(message):
+        markup = types.InlineKeyboardMarkup()
+        markup.add(types.InlineKeyboardButton('Загрузить новый файл. Он автоматически конвертируется в архив.', callback_data='send_file'))
+        markup.add(types.InlineKeyboardButton('Загрузить созданный архив.', callback_data='next_step_upload_file'))
+        bot.send_message(message.chat.id, "Пожалуйста выберите пункт меню.", reply_markup=markup)
+        print("Выбор способа загрузки файла.")
 
     # Получаем название для записи на сайте
     def get_date(message):

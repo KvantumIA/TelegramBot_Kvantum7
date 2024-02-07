@@ -27,7 +27,6 @@ class TelBot:
             self.capcha_error = False
             self.wait_upload = False
             current_dir = os.path.dirname(os.path.abspath(__file__))
-            # self.temp_dir = os.path.join(current_dir, 'temp')
             self.current_date = datetime.now().date()
             self.file_zip_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), f"menu_archive_{self.current_date}.rar")
             self.name_file_zip = ''
@@ -72,11 +71,8 @@ class TelBot:
             password_input.send_keys('Sever35S')
             time.sleep(1)
 
-            # Сохраняем скриншот в директорию temp
-            # image_path = os.path.join(self.temp_dir, 'screen_display.png')
             self.browser.save_screenshot('screen_display.png')
             print("Общий снимок экрана сделан.")
-            # image_path = os.path.join(self.temp_dir, 'capcha_screen.png')
             self.browser.find_element(By.ID, 'yw0').screenshot('capcha_screen.png')
             time.sleep(2)
             print("Отправляем капчу.")
