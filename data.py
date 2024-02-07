@@ -9,6 +9,12 @@ from datetime import datetime
 from PIL import Image
 from selenium.common.exceptions import NoAlertPresentException
 import zipfile
+import pickle
+
+import Token_ID
+
+token = Token_ID.TokenId()
+token2 = token.id_token()
 
 
 class TelBot:
@@ -21,18 +27,20 @@ class TelBot:
             self.capcha_error = False
             self.wait_upload = False
             current_dir = os.path.dirname(os.path.abspath(__file__))
-            self.temp_dir = os.path.join(current_dir, 'temp')
+            # self.temp_dir = os.path.join(current_dir, 'temp')
             self.current_date = datetime.now().date()
-            self.file_zip_path = os.path.join(self.temp_dir, f"menu_archive_{self.current_date}.rar")
+            self.file_zip_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), f"menu_archive_{self.current_date}.rar")
             self.name_file_zip = ''
             self.chat_id = ''
+            self.bot_token = token2
+            self.answer_next_step = ''
 
         # Начало работы. Первый шаг.
         def start_step(self):
             o = Options()
-            o.add_argument("--headless")  # скрытый режим без окна браузера
-            o.add_argument("--no-sandbox")
-            o.add_argument("--disable-gpu")
+            # o.add_argument("--headless")  # скрытый режим без окна браузера
+            # o.add_argument("--no-sandbox")
+            # o.add_argument("--disable-gpu")
             # o.page_load_strategy = 'eager'     # не ждать окончания загрузки страницы
             o.add_experimental_option("detach", True)
             self.browser = webdriver.Chrome(options=o)
@@ -46,8 +54,8 @@ class TelBot:
                 print("Оповещение о куки не найдено")
 
             time.sleep(3)
-            image_path = os.path.join(self.temp_dir, 'all_screen.png')
-            self.browser.save_screenshot(image_path)
+            # image_path = os.path.join(self.temp_dir, 'all_screen.png')
+            self.browser.save_screenshot("all_screen.png")
             print("Первоначальный снимок экрана сделан.")
 
             self.original_window = self.browser.current_window_handle
@@ -65,11 +73,11 @@ class TelBot:
             time.sleep(1)
 
             # Сохраняем скриншот в директорию temp
-            image_path = os.path.join(self.temp_dir, 'screen_display.png')
-            self.browser.save_screenshot(image_path)
+            # image_path = os.path.join(self.temp_dir, 'screen_display.png')
+            self.browser.save_screenshot('screen_display.png')
             print("Общий снимок экрана сделан.")
-            image_path = os.path.join(self.temp_dir, 'capcha_screen.png')
-            self.browser.find_element(By.ID, 'yw0').screenshot(image_path)
+            # image_path = os.path.join(self.temp_dir, 'capcha_screen.png')
+            self.browser.find_element(By.ID, 'yw0').screenshot('capcha_screen.png')
             time.sleep(2)
             print("Отправляем капчу.")
             self.send_image_to_bot()
@@ -92,18 +100,23 @@ class TelBot:
                 # Переходим на всплывающее окно для загрузки файла
                 if not elements:
                     print("Капча принята")
+                    # pickle.dump(self.browser.get_cookies(), open("cookies", "wb"))      # Сохранение куки
                     self.capcha_error = False
                     self.browser.get('https://ykt-dou35.obr.sakha.gov.ru/pages/back/update?type=0&id=531799')
                     time.sleep(5)
+                    print("Нажатие на кнопку создания ссылки")
                     self.browser.find_element(By.CLASS_NAME, 'cke_button__link_icon').click()
                     time.sleep(3)
+                    print("Переход на страничку загрузки файла")
                     self.browser.find_element(By.ID, 'cke_upload_205').click()
                     time.sleep(2)
+
+                    # for cookies in pickle.load(open("cookies", "rb")):            # Загрузка куки
+                    #     self.browser.add_cookie(cookies)
 
                 else:
                     self.find_error()
             except Exception as e:
-                self.error_message('Error', f'Line 42: {e}')
                 print(e)
 
         # Продолжение работы. Третий шаг.
@@ -133,7 +146,6 @@ class TelBot:
                 paragraph = paragraphs[10]  # Индекс 11 соответствует 12-ому элементу
                 paragraph.clear()
                 time.sleep(1)
-                # paragraph.send_keys(Keys.BACKSPACE)
                 time.sleep(5)
                 print("Удалена 11 строчка")
 
@@ -151,32 +163,27 @@ class TelBot:
             self.browser.quit()
 
         # Обрезаем изображение капчи. Функция отключена.
-        def crop_image(self):
-            image = Image.open("temp/screen_display.png", "r")
-            # width, height = image.size     # Отправляет размер скриншота общего экрана
-            # print(width)
-            # print(height)
-            left = 180
-            top = 420
-            right = 290
-            bottom = 530
-
-            # Вырезаем область изображения
-            cropped_image = image.crop((left, top, right, bottom))
-            print("Капча обрезана.")
-            image_path = os.path.join(self.temp_dir, 'cropped_image.png')
-            cropped_image.save(image_path)
+        # def crop_image(self):
+        #     image = Image.open("temp/screen_display.png", "r")
+        #     # width, height = image.size     # Отправляет размер скриншота общего экрана
+        #     # print(width)
+        #     # print(height)
+        #     left = 180
+        #     top = 420
+        #     right = 290
+        #     bottom = 530
+        #
+        #     # Вырезаем область изображения
+        #     cropped_image = image.crop((left, top, right, bottom))
+        #     print("Капча обрезана.")
+        #     image_path = os.path.join(self.temp_dir, 'cropped_image.png')
+        #     cropped_image.save(image_path)
 
         # Отправляем капчу в телеграмм бот
         def send_image_to_bot(self):
-            bot_token = '6867880772:AAHNc5HvVnWncNDyXrh5Q67sQ607VDG8v98'
             chat_id = self.chat_id  # Идентификатор чата, куда вы хотите отправить изображение
-            bot_api_url = f'https://api.telegram.org/bot{bot_token}/sendPhoto'
-
-            # image_path = os.path.join(self.temp_dir, 'cropped_image.png')     #отключено, так как сейчас делается скриншот именно области капчи
-            # self.crop_image()
-
-            image_path = os.path.join(self.temp_dir, 'capcha_screen.png')
+            bot_api_url = f'https://api.telegram.org/bot{self.bot_token}/sendPhoto'
+            image_path = os.path.join('.', 'capcha_screen.png')
             time.sleep(3)
             # Открываем изображение
             with open(image_path, 'rb') as image_file:
@@ -192,26 +199,28 @@ class TelBot:
         # Проверяем ответ пользователя на валидность капчи
         def find_error(self):
             self.capcha_error = True
-            print("Капча не принята.")
+            print("Капча не принята. Делаем повторный скриншот капчи.")
             time.sleep(2)
-            image_path = os.path.join(self.temp_dir, 'screen_display.png')
-            self.browser.save_screenshot(image_path)
+            self.browser.find_element(By.ID, 'yw0').screenshot('capcha_screen.png')
+            self.browser.save_screenshot('screen_display.png')
             time.sleep(2)
+            print("Отправляем капчу.")
             self.send_image_to_bot()
 
         # Загрузка файла на сайт
-        # try:
         def upload_file(self, file_path):
             self.browser.switch_to.frame("cke_200_fileInput")
             print("Перешли на iframe окна для загрузки файлов.")
             file_input = self.browser.find_element(By.CSS_SELECTOR, "input[type='file'][id='cke_200_fileInput_input']")
             file_input.send_keys(file_path)
             print("Файл загружен на сервер.")
-            time.sleep(5)
+            time.sleep(3)
             self.browser.switch_to.default_content()
-            time.sleep(5)
+            print("Произошел переход на основной экран.")
+            time.sleep(3)
             self.browser.find_element(By.ID, 'cke_202_label').click()
-            time.sleep(5)
+            print("Произошел клик на загрузку файла.")
+            time.sleep(10)
 
             # Проверка на всплывающее окно Alert
             try:
@@ -223,17 +232,16 @@ class TelBot:
                 print("Окно закрыто.")
             except NoAlertPresentException:
                 print("Alert не найден.")
-            self.delete_file(file_path)  # удаляем файл
-
-        # except Exception:
-        #     message = "Вы не загрузили файл. Повторите снова. Приложение закрыто."
-        #     print(message)
+            print("Начинается удаление файла.")
+            self.delete_file(file_path)
+            # удаляем файл
+            self.answer_next_step = 'start'
+            print('answer_next_step = "start"')
 
         # Удаляет использованные файлы
         @staticmethod
         def delete_file(file_path):
             if os.path.exists(file_path):
-                # Удаляем файл
                 os.remove(file_path)
                 print(f"Файл {file_path} успешно удален.")
             else:
@@ -241,15 +249,17 @@ class TelBot:
 
         # Создаёт и добавляет файлы в архив
         def add_to_zip(self, file_to_add):
-            del_file_path = os.path.join(self.temp_dir, self.name_file_zip)
+            del_file_path = os.path.join('.', self.name_file_zip)
             arcname = os.path.basename(file_to_add)
             if os.path.exists(self.file_zip_path) and os.path.isfile(self.file_zip_path) and self.file_zip_path.endswith('.rar'):
                 with zipfile.ZipFile(self.file_zip_path, 'a') as zipf:
                     zipf.write(file_to_add, arcname=arcname)
+                    print("Файл добавлен в архив.")
                     time.sleep(5)
             else:
                 with zipfile.ZipFile(self.file_zip_path, 'w') as zipf:
                     zipf.write(file_to_add, arcname=arcname)
+                    print("Файл добавлен в архив.")
                     time.sleep(5)
 
             self.delete_file(del_file_path)

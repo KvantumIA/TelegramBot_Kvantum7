@@ -1,11 +1,16 @@
 import os
 import telebot
 import time
+
+import Token_ID
 from data import TelBot
 from telebot import types
 from selenium.common.exceptions import WebDriverException
 
-bot = telebot.TeleBot('6939201071:AAFVLDepE2VnTCOA2Zib7YNVeJPt4etLIVI')
+
+token = Token_ID.TokenId()
+token2 = token.id_token()
+bot = telebot.TeleBot(token2)
 start = TelBot()
 
 try:
@@ -52,6 +57,8 @@ try:
             question_upload_file(message)
             time.sleep(45)
             print("Загрузка файла.")
+            while len(start.answer_next_step) == 0:
+                time.sleep(1)  # Даем время для получения ответа
             next_step(message)
 
     # Проверяем капчу
@@ -105,7 +112,7 @@ try:
                 start.upload_file(start.file_zip_path)
                 time.sleep(5)
             else:
-                bot.send_message(1624502869, "Вы предварительно не создали архив! Пожалуйста выберите в меню 'Добавьте файлы в архив.' и затем снова попробуйте загрузить данные "
+                bot.send_message(start.chat_id, "Вы предварительно не создали архив! Пожалуйста выберите в меню 'Добавьте файлы в архив.' и затем снова попробуйте загрузить данные "
                                              "на сайт. Либо выберите 'Загрузить новый файл в формате архива.' Программа завершена.")
                 start.browser.close()
                 start.browser.quit()
@@ -125,11 +132,12 @@ try:
             file_info = bot.get_file(message.document.file_id)
             downloaded_file = bot.download_file(file_info.file_path)
 
+            # Получение наименования файла
             file_download = message.document
             file_name = file_download.file_name
             start.name_file_zip = file_name
 
-            file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'temp', file_name)
+            file_path = os.path.join('.', file_name)
             with open(file_path, 'wb') as file:
                 file.write(downloaded_file)
             bot.send_message(message.chat.id, f'Файл успешно сохранен. Подождите немного для загрузки файла на сервер...')
@@ -138,8 +146,8 @@ try:
             start.upload_file(start.file_zip_path)
             time.sleep(5)
         else:
-            bot.send_message(1624502869, f'Вы отправили не файл. Пожалуйста повторите.')
-            get_file(message)
+            bot.send_message(message.chat.id, f'Вы отправили не файл. Пожалуйста повторите.')
+            send_file(message)
 
     # Сохраняем файлы в общий архив
     @bot.message_handler(commands=['add_zip_file'])
@@ -156,7 +164,7 @@ try:
             file_name = file_download.file_name
             start.name_file_zip = file_name
 
-            file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'temp', file_name)
+            file_path = os.path.join('.', file_name)
             with open(file_path, 'wb') as file:
                 file.write(downloaded_file)
 
@@ -174,7 +182,12 @@ while True:
         bot.send_message(start.chat_id, "Произошла ошибка WebDriver. Повторите попытку позже.")
         print("Произошла ошибка WebDriver:")
         print(e)
+        start.browser.close()
+        start.browser.quit()
     except Exception as e:
         bot.send_message(start.chat_id, "Произошла неизвестная ошибка. Повторите попытку позже.")
         print("Произошла неизвестная ошибка:")
         print(e)
+        start.browser.close()
+        start.browser.quit()
+
