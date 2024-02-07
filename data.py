@@ -28,14 +28,16 @@ class TelBot:
             self.wait_upload = False
             current_dir = os.path.dirname(os.path.abspath(__file__))
             self.current_date = datetime.now().date()
-            self.file_zip_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), f"menu_archive_{self.current_date}.rar")
+            # self.file_zip_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), f"menu_archive_{self.current_date}.rar")
+            self.file_zip_path = f"menu_archive_{self.current_date}.rar"
             self.name_file_zip = ''
             self.chat_id = ''
             self.bot_token = token2
             self.answer_next_step = ''
+            self.cookies_check = False
 
-        # Начало работы. Первый шаг.
-        def start_step(self):
+        # Создание окна
+        def create_windows(self):
             o = Options()
             # o.add_argument("--headless")  # скрытый режим без окна браузера
             # o.add_argument("--no-sandbox")
@@ -47,6 +49,8 @@ class TelBot:
             self.browser.get('https://ykt-dou35.obr.sakha.gov.ru/user/frontLogin')
             time.sleep(3)
 
+        # Начало работы. Первый шаг.
+        def start_step(self):
             try:
                 self.browser.find_element(By.CLASS_NAME, 'cookie-popup-accept-cookies').click()
             except Exception:
@@ -57,6 +61,7 @@ class TelBot:
             self.browser.save_screenshot("all_screen.png")
             print("Первоначальный снимок экрана сделан.")
 
+            # Сохраняем данные браузера
             self.original_window = self.browser.current_window_handle
 
             print("Вводим логин.")
@@ -78,6 +83,26 @@ class TelBot:
             print("Отправляем капчу.")
             self.send_image_to_bot()
 
+        # Открытие сайта с помощью куки
+        def checking_cookies(self):
+            print("Загрузка куки")
+            for cookies in pickle.load(open("cookies", "rb")):  # Загрузка куки
+                self.browser.add_cookie(cookies)
+            time.sleep(5)
+            self.browser.refresh()
+            time.sleep(10)
+            print("Проверка на успешное прохождение куки")
+            elements = self.browser.find_elements(By.CLASS_NAME, 'errorMessage')
+            if elements:
+                print("Python: Файл куки недействителен. Начинаю загрузку сайта с проверкой капчи.")
+                os.remove('cookies')
+                self.browser.close()
+                self.browser.quit()
+            else:
+                print("Файл куки принят.")
+                self.original_window = self.browser.current_window_handle
+                self.cookies_check = True
+
         # Продолжение работы. Второй шаг.
         def two_step(self):
             self.browser.switch_to.window(self.original_window)
@@ -90,33 +115,38 @@ class TelBot:
 
                 capcha_input.send_keys(Keys.ENTER)
                 time.sleep(3)
-
                 # Проверяем чтобы не было ошибки капчи
                 elements = self.browser.find_elements(By.CLASS_NAME, 'errorMessage')
-                # Переходим на всплывающее окно для загрузки файла
                 if not elements:
                     print("Капча принята")
-                    # pickle.dump(self.browser.get_cookies(), open("cookies", "wb"))      # Сохранение куки
+                    pickle.dump(self.browser.get_cookies(), open("cookies", "wb"))  # Сохранение куки
                     self.capcha_error = False
-                    self.browser.get('https://ykt-dou35.obr.sakha.gov.ru/pages/back/update?type=0&id=531799')
-                    time.sleep(5)
-                    print("Нажатие на кнопку создания ссылки")
-                    self.browser.find_element(By.CLASS_NAME, 'cke_button__link_icon').click()
-                    time.sleep(3)
-                    print("Переход на страничку загрузки файла")
-                    self.browser.find_element(By.ID, 'cke_upload_205').click()
-                    time.sleep(2)
 
-                    # for cookies in pickle.load(open("cookies", "rb")):            # Загрузка куки
-                    #     self.browser.add_cookie(cookies)
-
+                    url = f'https://api.telegram.org/bot{self.bot_token}/sendMessage'
+                    params = {
+                        'chat_id': self.chat_id,
+                        'text': 'Вы успешно прошли капчу.'
+                    }
+                    requests.post(url, json=params)
                 else:
                     self.find_error()
             except Exception as e:
                 print(e)
 
-        # Продолжение работы. Третий шаг.
         def three_step(self):
+            # Переходим на страницу настройки
+            self.browser.get('https://ykt-dou35.obr.sakha.gov.ru/pages/back/update?type=0&id=531799')
+            time.sleep(5)
+            # Переходим на всплывающее окно для загрузки файла
+            print("Нажатие на кнопку создания ссылки")
+            self.browser.find_element(By.CLASS_NAME, 'cke_button__link_icon').click()
+            time.sleep(3)
+            print("Переход на страничку загрузки файла")
+            self.browser.find_element(By.ID, 'cke_upload_205').click()
+            time.sleep(2)
+
+        # Продолжение работы. Третий шаг.
+        def four_step(self):
             self.browser.switch_to.window(self.original_window)
             print("Переключился на основной экран браузера.")
             time.sleep(3)
@@ -141,7 +171,6 @@ class TelBot:
 
                 paragraph = paragraphs[10]  # Индекс 11 соответствует 12-ому элементу
                 paragraph.clear()
-                time.sleep(1)
                 time.sleep(5)
                 print("Удалена 11 строчка")
 
@@ -177,14 +206,13 @@ class TelBot:
 
         # Отправляем капчу в телеграмм бот
         def send_image_to_bot(self):
-            chat_id = self.chat_id  # Идентификатор чата, куда вы хотите отправить изображение
             bot_api_url = f'https://api.telegram.org/bot{self.bot_token}/sendPhoto'
             image_path = os.path.join('.', 'capcha_screen.png')
             time.sleep(3)
             # Открываем изображение
             with open(image_path, 'rb') as image_file:
                 files = {'photo': image_file}
-                data = {'chat_id': chat_id}
+                data = {'chat_id': self.chat_id}
                 response = requests.post(bot_api_url, files=files, data=data)
 
             if response.status_code == 200:

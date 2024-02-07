@@ -21,41 +21,60 @@ try:
 
     # Начало работы загрузки данных на сайт
     @bot.message_handler(commands=['upload_file'])
-    def echo_all(message):
+    def bot_one_step(message):
+        bot.send_message(message.chat.id, "Начал работать. Подождите...")
         start.chat_id = message.chat.id
         if message.text == "/upload_file":
-            bot.send_message(message.chat.id, "Начал работать. Подождите...")
-            attempts = 0
-            start.start_step()
-            answer_capcha(message)
-            time.sleep(15)  # Время для ответа на капчу
-            start.two_step()
+            # Заходим с куки
+            if os.path.exists('cookies'):
+                start.create_windows()
+                start.checking_cookies()
+                if start.cookies_check:
+                    bot_two_step(message)
+                else:
+                    print("Бот: Куки недействительны. Закрываю приложение. Начата загрузка сайта с вводом куки.")
+                    return
 
-            while start.capcha_error and attempts < 5:
-                bot.send_message(message.chat.id, "Вы неверно ввели Capcha. Пожалуйста повторите.")
+            # Заходим без куки
+            else:
+                attempts = 0
+                start.create_windows()
+                time.sleep(3)
+                start.start_step()
                 answer_capcha(message)
                 time.sleep(15)  # Время для ответа на капчу
                 start.two_step()
-                attempts += 1
 
-            if attempts == 5:  # Если прошло 5 попыток
-                bot.send_message(message.chat.id, "Прошло 5 попыток ввода Capcha. Пожалуйста, повторите позже. Приложение закрыто.")
-                start.browser.close()
-                start.browser.quit()
-                return
+                # Проверка капчи
+                while start.capcha_error and attempts < 5:
+                    bot.send_message(message.chat.id, "Вы неверно ввели Capcha. Пожалуйста повторите.")
+                    answer_capcha(message)
+                    time.sleep(15)  # Время для ответа на капчу
+                    start.two_step()
+                    attempts += 1
 
-            # send_file(message)
-            bot.send_message(message.chat.id, "Вы успешно прошли капчу.")
-            question_upload_file(message)
-            time.sleep(45)
-            print("Загрузка файла.")
-            while len(start.answer_next_step) == 0:
-                time.sleep(1)  # Даем время для получения ответа
-            next_step(message)
+                if attempts == 5:  # Если прошло 5 попыток
+                    bot.send_message(message.chat.id, "Прошло 5 попыток ввода Capcha. Пожалуйста, повторите позже. Приложение закрыто.")
+                    start.browser.close()
+                    start.browser.quit()
+                    return
+
+                bot_two_step(message)
+
+    def bot_two_step(message):
+        start.three_step()
+        time.sleep(5)
+        question_upload_file(message)
+        time.sleep(45)
+        print("Загрузка файла.")
+        while len(start.answer_next_step) == 0:
+            time.sleep(1)  # Даём время для получения ответа
+        bot_three_step(message)
 
     # Продолжаем работать, следующий шаг
-    def next_step(message):
+    def bot_three_step(message):
         attempts = 0
+        # Проверка на название файла. 5 попыток.
         while len(start.answer_date) == 0 and attempts < 5:
             get_date(message)
             time.sleep(60)  # Время для записи наименования ссылки на сайте
@@ -69,7 +88,7 @@ try:
 
         bot.send_message(message.chat.id, "Наименование для ссылки успешно добавлено. Дальше работаю сам. Остались последние шаги.")
         time.sleep(5)  # поменял время, было 30
-        start.three_step()
+        start.four_step()
 
         message_text = (f"Все прошло успешно, данные загружены на [сайт](https://ykt-dou35.obr.sakha.gov.ru/sveden/organizatsiya-pitaniya-v-obrazovatelynoy-organizatsii"
                         f"/ezhednevnoe-menyu-goryachego-pitaniya)")
@@ -88,9 +107,9 @@ try:
     # Выбор загрузки файла в процессе работы
     def question_upload_file(message):
         markup = types.InlineKeyboardMarkup()
-        markup.add(types.InlineKeyboardButton('Загрузить новый файл. Он автоматически конвертируется в архив.', callback_data='send_file'))
-        markup.add(types.InlineKeyboardButton('Загрузить созданный архив.', callback_data='next_step_upload_file'))
-        bot.send_message(message.chat.id, "Пожалуйста выберите пункт меню.", reply_markup=markup)
+        markup.add(types.InlineKeyboardButton('Загрузить новый файл.', callback_data='send_file'))
+        markup.add(types.InlineKeyboardButton('Отправить созданный архив.', callback_data='next_step_upload_file'))
+        bot.send_message(message.chat.id, "Пожалуйста выберите способ загрузки файлов на сайт.", reply_markup=markup)
         print("Выбор способа загрузки файла.")
 
     # Получаем название для записи на сайте
@@ -174,6 +193,8 @@ try:
 
 except Exception as ex:
     print(ex)
+
+# bot.polling()
 
 while True:
     try:
