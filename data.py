@@ -6,11 +6,9 @@ from selenium.webdriver.common.keys import Keys
 import time
 from selenium.webdriver.chrome.options import Options
 from datetime import datetime
-from PIL import Image
 from selenium.common.exceptions import NoAlertPresentException
 import zipfile
 import pickle
-
 import Token_ID
 
 token = Token_ID.TokenId()
@@ -26,38 +24,72 @@ class TelBot:
             self.browser = browser
             self.capcha_error = False
             self.wait_upload = False
-            current_dir = os.path.dirname(os.path.abspath(__file__))
             self.current_date = datetime.now().date()
-            # self.file_zip_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), f"menu_archive_{self.current_date}.rar")
-            self.file_zip_path = f"menu_archive_{self.current_date}.rar"
+            file_name = f"menu_archive_{self.current_date}.rar"
+            self.file_zip_path = os.path.join(os.getcwd(), file_name)
             self.name_file_zip = ''
             self.chat_id = ''
             self.bot_token = token2
             self.answer_next_step = ''
             self.cookies_check = False
+            self.elements = False
 
         # Создание окна
         def create_windows(self):
             o = Options()
-            # o.add_argument("--headless")  # скрытый режим без окна браузера
-            # o.add_argument("--no-sandbox")
-            # o.add_argument("--disable-gpu")
-            # o.page_load_strategy = 'eager'     # не ждать окончания загрузки страницы
+            o.add_argument("--headless")  # скрытый режим без окна браузера
+            o.add_argument("--no-sandbox")
+            o.add_argument("--disable-gpu")
             o.add_experimental_option("detach", True)
             self.browser = webdriver.Chrome(options=o)
             self.browser.maximize_window()
             self.browser.get('https://ykt-dou35.obr.sakha.gov.ru/user/frontLogin')
             time.sleep(3)
 
+        # Открытие сайта с помощью куки
+        def checking_cookies(self):
+            self.check_time_cookies()
+            if self.elements:
+                print("Загрузка куки")
+                for cookies in pickle.load(open("cookies", "rb")):  # Загрузка куки
+                    self.browser.add_cookie(cookies)
+                time.sleep(5)
+                self.browser.refresh()
+                time.sleep(10)
+                print("Проверка на успешное прохождение куки")
+                print("Файл куки принят.")
+                self.original_window = self.browser.current_window_handle
+                self.cookies_check = True
+
+            else:
+                print("Python: Файл куки недействителен. Начинаю загрузку сайта с проверкой капчи.")
+                os.remove('cookies')
+                self.browser.close()
+                self.browser.quit()
+
+        def check_time_cookies(self):
+            with open("cookies", "rb") as cookies_file:
+                cookies = pickle.load(cookies_file)
+            current_time = time.time()
+            # Проверка срока годности каждого cookie
+            for cookie in cookies:
+                if 'expiry' in cookie:
+                    expiry_time = cookie['expiry']
+                    if expiry_time > current_time:
+                        print(f"Cookie с именем {cookie['name']} еще действителен.")
+                        self.elements = True
+                    else:
+                        print(f"Cookie с именем {cookie['name']} истек.")
+
         # Начало работы. Первый шаг.
         def start_step(self):
             try:
                 self.browser.find_element(By.CLASS_NAME, 'cookie-popup-accept-cookies').click()
+                print("Куки закрыты")
             except Exception:
                 print("Оповещение о куки не найдено")
 
             time.sleep(3)
-            # image_path = os.path.join(self.temp_dir, 'all_screen.png')
             self.browser.save_screenshot("all_screen.png")
             print("Первоначальный снимок экрана сделан.")
 
@@ -82,26 +114,6 @@ class TelBot:
             time.sleep(2)
             print("Отправляем капчу.")
             self.send_image_to_bot()
-
-        # Открытие сайта с помощью куки
-        def checking_cookies(self):
-            print("Загрузка куки")
-            for cookies in pickle.load(open("cookies", "rb")):  # Загрузка куки
-                self.browser.add_cookie(cookies)
-            time.sleep(5)
-            self.browser.refresh()
-            time.sleep(10)
-            print("Проверка на успешное прохождение куки")
-            elements = self.browser.find_elements(By.CLASS_NAME, 'errorMessage')
-            if elements:
-                print("Python: Файл куки недействителен. Начинаю загрузку сайта с проверкой капчи.")
-                os.remove('cookies')
-                self.browser.close()
-                self.browser.quit()
-            else:
-                print("Файл куки принят.")
-                self.original_window = self.browser.current_window_handle
-                self.cookies_check = True
 
         # Продолжение работы. Второй шаг.
         def two_step(self):
@@ -186,23 +198,6 @@ class TelBot:
 
             self.browser.close()
             self.browser.quit()
-
-        # Обрезаем изображение капчи. Функция отключена.
-        # def crop_image(self):
-        #     image = Image.open("temp/screen_display.png", "r")
-        #     # width, height = image.size     # Отправляет размер скриншота общего экрана
-        #     # print(width)
-        #     # print(height)
-        #     left = 180
-        #     top = 420
-        #     right = 290
-        #     bottom = 530
-        #
-        #     # Вырезаем область изображения
-        #     cropped_image = image.crop((left, top, right, bottom))
-        #     print("Капча обрезана.")
-        #     image_path = os.path.join(self.temp_dir, 'cropped_image.png')
-        #     cropped_image.save(image_path)
 
         # Отправляем капчу в телеграмм бот
         def send_image_to_bot(self):
